@@ -1,0 +1,100 @@
+digraph AzureIntegrationArchitecture {
+  graph [splines=ortho, nodesep=1.0, ranksep=1.2, bgcolor="white", pad="0.5", compound=true, rankdir=TB];
+
+  subgraph cluster_vnet {
+    label="vnet-integration-prod\n(10.10.0.0/16)";
+    bgcolor="#EFF6FF";
+
+    subgraph cluster_ingress {
+      label="snet-ingress\n(10.10.1.0/24)";
+      bgcolor="#E3F2FD";
+      nsg_ingress [label="NSG-Ingress"];
+      agw [label="agw-integration\nWAF"];
+      public_entry [label="Public API /\nEntry Point"];
+    }
+
+    subgraph cluster_integration {
+      label="snet-integration\n(10.10.2.0/24)";
+      bgcolor="#F3E5F5";
+      nsg_integration [label="NSG-Integration"];
+      logic_apps [label="logicapps-erp-orchestration"];
+      adf [label="adf-integration-prod"];
+      fabric [label="fabric-lakehouse-analytics"];
+      service_bus [label="sb-integration-events"];
+      function_app [label="func-event-processor"];
+    }
+
+    subgraph cluster_data {
+      label="snet-data\n(10.10.3.0/24)";
+      bgcolor="#FFF3E0";
+      nsg_data [label="NSG-Data"];
+      sql_server [label="sqlsrv-integration"];
+      sql_db [label="sqldb-operational"];
+      storage [label="stintegrationdata001\nADLS / Data Lake"];
+      fabric_onelake [label="fabric-oneLake"];
+      kv [label="kv-integration-prod"];
+      sql_pe [label="Private Endpoint\nSQL"];
+      storage_pe [label="Private Endpoint\nStorage"];
+      kv_pe [label="Private Endpoint\nKeyVault"];
+    }
+
+    subgraph cluster_firewall {
+      label="Firewall & Routing";
+      bgcolor="#FFEBEE";
+      azfw [label="azfw-integration"];
+      route_table [label="Route Table\nDefault route to Firewall"];
+    }
+  }
+
+  subgraph cluster_monitoring {
+    label="Monitoring & Observability";
+    bgcolor="#E8F5E9";
+    law [label="law-integration-prod"];
+    appi [label="appi-integration"];
+  }
+
+  users [label="Business Users"];
+  afd [label="afd-integration"];
+
+  users -> afd [label="HTTPS"];
+  afd -> agw [label="HTTPS"];
+  agw -> public_entry [label="API / service"];
+
+  public_entry -> logic_apps [label="Invokes"];
+  logic_apps -> adf [label="Orchestrates"];
+  adf -> fabric [label="Transforms"];
+
+  logic_apps -> service_bus [label="Events"];
+  service_bus -> function_app [label="Triggers"];
+  function_app -> sql_db [label="Process / enrich"];
+
+  adf -> storage [label="Read / write"];
+  adf -> fabric_onelake [label="Data movement"];
+  logic_apps -> sql_db [label="Data access"];
+
+  public_entry -> kv [label="Secrets", style=dotted];
+  logic_apps -> kv [label="Secrets", style=dotted];
+  adf -> kv [label="Secrets", style=dotted];
+  function_app -> kv [label="Secrets", style=dotted];
+
+  public_entry -> azfw [label="Outbound", style=dashed];
+  logic_apps -> azfw [label="Outbound", style=dashed];
+  adf -> azfw [label="Outbound", style=dashed];
+  function_app -> azfw [label="Outbound", style=dashed];
+
+  public_entry -> law [label="Logs", style=dotted, color=green];
+  logic_apps -> law [label="Logs", style=dotted, color=green];
+  adf -> law [label="Logs", style=dotted, color=green];
+  fabric -> law [label="Telemetry", style=dotted, color=green];
+  sql_db -> law [label="Monitoring", style=dotted, color=green];
+
+  public_entry -> appi [label="Telemetry", style=dotted, color=green];
+  logic_apps -> appi [label="Telemetry", style=dotted, color=green];
+  adf -> appi [label="Telemetry", style=dotted, color=green];
+
+  sql_server -> sql_db [label="Hosts"];
+  sql_db -> sql_pe [label="Private Link"];
+  storage -> storage_pe [label="Private Link"];
+  kv -> kv_pe [label="Private Link"];
+  route_table -> azfw [label="Default route"];
+}

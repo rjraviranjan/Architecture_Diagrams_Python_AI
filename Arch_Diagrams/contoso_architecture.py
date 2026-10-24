@@ -1,6 +1,7 @@
 """
-Azure Architecture Diagram Generator for Contoso Medical Portal
-Generates PNG, DOT, and Draw.io format diagrams
+Generic Azure Integration Platform Architecture
+Generates PNG, DOT, and Draw.io format diagrams for Azure Logic Apps,
+Azure Data Factory, Microsoft Fabric, and supporting enterprise services.
 """
 
 import subprocess
@@ -37,14 +38,14 @@ vnet_cluster_attr = {
     "margin": "25"
 }
 
-frontend_cluster_attr = {
+ingress_cluster_attr = {
     "fontsize": "13",
     "bgcolor": "#E3F2FD",
     "style": "rounded",
     "margin": "15"
 }
 
-backend_cluster_attr = {
+integration_cluster_attr = {
     "fontsize": "13",
     "bgcolor": "#F3E5F5",
     "style": "rounded",
@@ -58,7 +59,7 @@ data_cluster_attr = {
     "margin": "15"
 }
 
-firewall_cluster_attr = {
+security_cluster_attr = {
     "fontsize": "13",
     "bgcolor": "#FFEBEE",
     "style": "rounded",
@@ -72,115 +73,108 @@ monitoring_cluster_attr = {
     "margin": "15"
 }
 
-# Create the diagram
 with Diagram(
-    "Contoso Medical Portal Architecture",
-    filename="diagrams/contoso_architecture",
+    "Azure Integration Platform Architecture",
+    filename="diagrams/generic_integration_architecture",
     outformat=["png", "dot"],
     show=False,
     direction="TB",
     graph_attr=graph_attr
 ):
-    
-    # External users
-    users = Users("Users")
-    
-    # Front Door (external to VNet)
-    afd = FrontDoors("afd-contoso\n(Azure Front Door)")
-    
-    # VNet container with all internal resources
-    with Cluster("vnet-contoso-auea-001\n(10.10.0.0/16)", graph_attr=vnet_cluster_attr):
-        
-        # Frontend Subnet
-        with Cluster("snet-frontend\n(10.10.1.0/24)", graph_attr=frontend_cluster_attr):
-            nsg_frontend = NetworkSecurityGroupsClassic("NSG-Frontend")
-            agw = ApplicationGateway("agw-contoso\n(WAF)")
-            webapp = AppServices("app-frontend-portal\n(Web App)")
-        
-        # Backend Subnet
-        with Cluster("snet-backend\n(10.10.2.0/24)", graph_attr=backend_cluster_attr):
-            nsg_backend = NetworkSecurityGroupsClassic("NSG-Backend")
-            backend_api = AppServices("app-order-api\n(Backend API)")
-            func_app = FunctionApps("func-order-processor\n(Function App)")
-            service_bus = ServiceBus("sb-contoso-orders\n(Service Bus)")
-        
-        # Data Subnet
+    users = Users("Business Users")
+    api_gateway = FrontDoors("API Gateway /\nFront Door")
+
+    with Cluster("vnet-integration-prod\n(10.10.0.0/16)", graph_attr=vnet_cluster_attr):
+        with Cluster("snet-ingress\n(10.10.1.0/24)", graph_attr=ingress_cluster_attr):
+            nsg_ingress = NetworkSecurityGroupsClassic("NSG-Ingress")
+            app_gateway = ApplicationGateway("Application Gateway\n(WAF)")
+            public_entry = AppServices("Public API /\nEntry Point")
+
+        with Cluster("snet-integration\n(10.10.2.0/24)", graph_attr=integration_cluster_attr):
+            nsg_integration = NetworkSecurityGroupsClassic("NSG-Integration")
+            logic_apps = AppServices("Azure Logic Apps\nWorkflow Automation")
+            data_factory = AppServices("Azure Data Factory\nData Pipelines")
+            fabric = AppServices("Microsoft Fabric\nAnalytics / Lakehouse")
+            service_bus = ServiceBus("Service Bus\nMessaging")
+            function_app = FunctionApps("Event Processor")
+
         with Cluster("snet-data\n(10.10.3.0/24)", graph_attr=data_cluster_attr):
             nsg_data = NetworkSecurityGroupsClassic("NSG-Data")
-            sql_server = SQLServers("sqlsrv-contoso")
-            sql_db = SQLDatabases("sqldb-orders")
-            storage = StorageAccounts("stcontosodata001")
-            keyvault = KeyVaults("kv-contoso-prod")
-        
-        # Firewall (separate area)
-        with Cluster("Firewall & Routing", graph_attr=firewall_cluster_attr):
-            azfw = Firewall("azfw-contoso\n(Azure Firewall)")
+            sql_server = SQLServers("SQL Server")
+            sql_db = SQLDatabases("Operational Data")
+            storage = StorageAccounts("ADLS / Data Lake")
+            fabric_data = StorageAccounts("Fabric OneLake\nData Store")
+            keyvault = KeyVaults("Key Vault")
+
+        with Cluster("Firewall & Routing", graph_attr=security_cluster_attr):
+            azfw = Firewall("Azure Firewall")
             route_table = RouteTables("Route Table\n(Default to FW)")
-    
-    # Monitoring (external to VNet)
-    with Cluster("Monitoring", graph_attr=monitoring_cluster_attr):
-        law = LogAnalyticsWorkspaces("law-contoso-prod\n(Log Analytics)")
-        appi = ApplicationInsights("appi-contoso\n(App Insights)")
-    
-    # Connection flows
-    # User traffic flow
-    users >> Edge(label="HTTPS") >> afd
-    afd >> Edge(label="HTTPS") >> agw
-    agw >> Edge(label="HTTPS") >> webapp
-    
-    # Web app to backend
-    webapp >> Edge(label="API") >> backend_api
-    
-    # Backend to data tier
-    backend_api >> Edge(label="SQL\n(Private)") >> sql_db
-    backend_api >> Edge(label="Storage\n(Private)") >> storage
-    
-    # Function app flows
-    func_app >> Edge(label="Message") >> service_bus
-    service_bus >> Edge(label="Process") >> func_app
-    func_app >> Edge(label="SQL\n(Private)") >> sql_db
-    
-    # Key Vault connections
-    webapp >> Edge(label="Secrets", style="dotted") >> keyvault
-    backend_api >> Edge(label="Secrets", style="dotted") >> keyvault
-    func_app >> Edge(label="Secrets", style="dotted") >> keyvault
-    
-    # SQL Server to Database
+
+    with Cluster("Monitoring & Observability", graph_attr=monitoring_cluster_attr):
+        law = LogAnalyticsWorkspaces("Log Analytics")
+        appi = ApplicationInsights("Application Insights")
+
+    # Entry flow
+    users >> Edge(label="HTTPS") >> api_gateway
+    api_gateway >> Edge(label="HTTPS") >> app_gateway
+    app_gateway >> Edge(label="API") >> public_entry
+
+    # Integration orchestration
+    public_entry >> Edge(label="Invokes") >> logic_apps
+    logic_apps >> Edge(label="Orchestrates") >> data_factory
+    data_factory >> Edge(label="Loads / transforms") >> fabric
+
+    # Event-driven integration
+    logic_apps >> Edge(label="Triggers") >> service_bus
+    service_bus >> Edge(label="Events") >> function_app
+    function_app >> Edge(label="Process / enrich") >> sql_db
+
+    # Data access
+    data_factory >> Edge(label="Read / write") >> storage
+    data_factory >> Edge(label="Data movement") >> fabric_data
+    logic_apps >> Edge(label="Data access") >> sql_db
+
+    # Security and routing
+    public_entry >> Edge(label="Secrets", style="dotted") >> keyvault
+    logic_apps >> Edge(label="Secrets", style="dotted") >> keyvault
+    data_factory >> Edge(label="Secrets", style="dotted") >> keyvault
+    function_app >> Edge(label="Secrets", style="dotted") >> keyvault
+
+    public_entry >> Edge(label="Outbound", style="dashed") >> azfw
+    logic_apps >> Edge(label="Outbound", style="dashed") >> azfw
+    data_factory >> Edge(label="Outbound", style="dashed") >> azfw
+    function_app >> Edge(label="Outbound", style="dashed") >> azfw
+
+    # Monitoring
+    public_entry >> Edge(label="Logs", style="dotted", color="green") >> law
+    logic_apps >> Edge(label="Logs", style="dotted", color="green") >> law
+    data_factory >> Edge(label="Logs", style="dotted", color="green") >> law
+    fabric >> Edge(label="Telemetry", style="dotted", color="green") >> law
+    sql_db >> Edge(label="Monitoring", style="dotted", color="green") >> law
+
+    public_entry >> Edge(label="Telemetry", style="dotted", color="green") >> appi
+    logic_apps >> Edge(label="Telemetry", style="dotted", color="green") >> appi
+    data_factory >> Edge(label="Telemetry", style="dotted", color="green") >> appi
+
     sql_server >> Edge(label="hosts") >> sql_db
-    
-    # Firewall routing
-    webapp >> Edge(label="Outbound", style="dashed") >> azfw
-    backend_api >> Edge(label="Outbound", style="dashed") >> azfw
-    func_app >> Edge(label="Outbound", style="dashed") >> azfw
-    
-    # Monitoring connections
-    webapp >> Edge(label="Logs", style="dotted", color="green") >> law
-    backend_api >> Edge(label="Logs", style="dotted", color="green") >> law
-    func_app >> Edge(label="Logs", style="dotted", color="green") >> law
-    sql_db >> Edge(label="Logs", style="dotted", color="green") >> law
-    storage >> Edge(label="Logs", style="dotted", color="green") >> law
-    
-    webapp >> Edge(label="Telemetry", style="dotted", color="green") >> appi
-    backend_api >> Edge(label="Telemetry", style="dotted", color="green") >> appi
-    func_app >> Edge(label="Telemetry", style="dotted", color="green") >> appi
 
 print("✓ PNG and DOT files generated in diagrams/")
 
-# Convert DOT to Draw.io format
 try:
     subprocess.run([
-        "graphviz2drawio", 
-        "diagrams/contoso_architecture.dot", 
-        "-o", 
-        "diagrams/contoso_architecture.drawio"
+        "graphviz2drawio",
+        "diagrams/generic_integration_architecture.dot",
+        "-o",
+        "diagrams/generic_integration_architecture.drawio"
     ], check=True)
-    print("✓ Draw.io file generated: diagrams/contoso_architecture.drawio")
+    print("✓ Draw.io file generated: diagrams/generic_integration_architecture.drawio")
 except subprocess.CalledProcessError as e:
     print(f"✗ Failed to convert to Draw.io format: {e}")
 except FileNotFoundError:
     print("✗ graphviz2drawio not found. Install with: pip install graphviz2drawio")
 
 print("\nGenerated files:")
-print("  - diagrams/contoso_architecture.png")
-print("  - diagrams/contoso_architecture.dot")
-print("  - diagrams/contoso_architecture.drawio")
+print("  - diagrams/generic_integration_architecture.png")
+print("  - diagrams/generic_integration_architecture.dot")
+print("  - diagrams/generic_integration_architecture.drawio")
+

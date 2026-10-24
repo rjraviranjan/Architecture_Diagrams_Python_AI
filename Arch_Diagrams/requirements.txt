@@ -3,7 +3,7 @@
 
 # IMPORTANT: GraphViz must be installed on the system first
 # Download from: https://graphviz.org/download/
-# Windows: Install to C:\Program Files\Graphviz
+# Windows: Install to C:\Users\rranjan4\Documents\Arch
 
 # Core diagram generation library
 diagrams==0.24.4
@@ -14,8 +14,8 @@ graphviz==0.20.3
 # GraphViz Python bindings (C extension)
 # Note: Installation requires MSVC compiler and GraphViz dev files
 # Install with: pip install --config-settings="--global-option=build_ext" 
-#               --config-settings="--global-option=-IC:\Program Files\Graphviz\include" 
-#               --config-settings="--global-option=-LC:\Program Files\Graphviz\lib" pygraphviz
+#               --config-settings="--global-option=-IC:\Users\rranjan4\Documents\Arch\include" 
+#               --config-settings="--global-option=-LC:\Users\rranjan4\Documents\Arch\lib" pygraphviz
 pygraphviz==1.14
 
 # Convert GraphViz DOT files to Draw.io format

@@ -1,59 +1,61 @@
-Create an Azure architecture diagram.
+Create a generic Azure integration architecture diagram.
 Scenario:
-One subscription, one VNet, three subnets, web tier, app tier, data tier, and monitoring.
+One subscription, one VNet, three subnets, inbound access, integration orchestration, data movement, analytics, and monitoring.
 
 Resources:
 
-1. **Networking**
-   - VNet: "vnet-contoso-auea-001" (10.10.0.0/16)
+1. Networking
+   - VNet: "vnet-integration-prod" (10.10.0.0/16)
    - Subnets:
-     - "snet-frontend" (10.10.1.0/24)
-     - "snet-backend" (10.10.2.0/24)
+     - "snet-ingress" (10.10.1.0/24)
+     - "snet-integration" (10.10.2.0/24)
      - "snet-data" (10.10.3.0/24)
-   - Azure Firewall: "azfw-contoso"
+   - Azure Firewall: "azfw-integration"
    - NSGs for each subnet
    - Route table with default route to Firewall
 
-2. **Web Tier**
-   - Azure Front Door: "afd-contoso"
-   - Application Gateway (WAF): "agw-contoso" in frontend subnet
-   - App Service Plan: "asp-contoso-prod"
-   - Web App: "app-frontend-portal"
+2. Entry and API Layer
+   - Azure Front Door: "afd-integration"
+   - Application Gateway / WAF: "agw-integration" in ingress subnet
+   - API layer or public endpoints exposed via gateway
 
-3. **Application Tier**
-   - Internal App Service Plan: "asp-contoso-backend"
-   - Backend App Service: "app-order-api"
-   - Azure Function App: "func-order-processor"
-   - Azure Service Bus: "sb-contoso-orders"
+3. Integration Orchestration
+   - Azure Logic Apps: "logicapps-erp-orchestration"
+   - Azure Data Factory: "adf-integration-prod"
+   - Microsoft Fabric: "fabric-lakehouse-analytics"
+   - Azure Service Bus: "sb-integration-events"
+   - Azure Functions: "func-event-processor" (optional)
 
-4. **Data Tier**
-   - SQL Server: "sqlsrv-contoso"
-   - SQL Database: "sqldb-orders"
-   - Storage Account: "stcontosodata001"
-   - Azure Key Vault: "kv-contoso-prod"
+4. Data and Platform Services
+   - SQL Server: "sqlsrv-integration"
+   - SQL Database: "sqldb-operational"
+   - Storage Account / ADLS: "stintegrationdata001"
+   - Fabric / OneLake: "fabric-oneLake"
+   - Azure Key Vault: "kv-integration-prod"
    - Private Endpoints for SQL, Storage, Key Vault (inside snet-data)
 
-5. **Monitoring**
-   - Log Analytics Workspace: "law-contoso-prod"
-   - Application Insights: "appi-contoso"
+5. Monitoring and Observability
+   - Log Analytics Workspace: "law-integration-prod"
+   - Application Insights: "appi-integration"
 
 Connections:
-- Users → Front Door → Application Gateway → Web App
-- Web App → Order API
-- Order API → SQL DB and Storage (private endpoints)
-- Function App → Service Bus → SQL
-- All apps → Key Vault for secrets
-- All resources → Log Analytics
-- All outbound traffic → Azure Firewall
+- Users -> Front Door -> Application Gateway -> Integration entry points
+- Logic Apps -> Data Factory -> Fabric
+- Logic Apps -> Service Bus -> Functions
+- Data Factory -> Storage / SQL / Fabric
+- Logic Apps and Data Factory -> Key Vault for secrets
+- All apps -> Log Analytics
+- All outbound traffic -> Azure Firewall
+- Monitoring -> Application Insights and Log Analytics
 
 Layout rules:
 - Top: Users + Front Door
-- Below: Application Gateway
-- Middle: Web App + Backend API
-- Right side: Function App + Service Bus
-- Bottom: Data tier (SQL, Storage, Key Vault)
+- Below: Application Gateway and API surface
+- Middle: Logic Apps + Data Factory + Fabric
+- Right side: Service Bus + Function processing
+- Bottom: Data tier (SQL, Storage, Fabric, Key Vault)
 - Bottom left: Firewall
-- Bottom centre: Monitoring resources
+- Bottom center/right: Monitoring resources
 - Place everything inside a single VNet box with subnet boundaries.
 
 Output format required:
@@ -61,4 +63,5 @@ Output format required:
 - List each resource with labels
 - List the arrows and connections
 - Make the layout instructions clear
-- Use icons for every resource following the icon instructions above
+- Use generic Azure integration icons
+- Keep the design portable across Azure Logic Apps, Data Factory, and Fabric

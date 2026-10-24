@@ -26,13 +26,13 @@ svg.path==7.0
 ### Initial Setup from Scratch
 ```powershell
 # 1. Create virtual environment
-cd "C:\Shelly\Youtube\Azure AI\Arch-diag\Arch_Diagrams"
+cd "C:\Users\rranjan4\Documents\Arch"
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
 # 2. Install pygraphviz with GraphViz paths (requires MSVC Build Tools)
-$env:GRAPHVIZ_DIR = "C:\Program Files\Graphviz"
-pip install --config-settings="--global-option=build_ext" --config-settings="--global-option=-IC:\Program Files\Graphviz\include" --config-settings="--global-option=-LC:\Program Files\Graphviz\lib" pygraphviz
+$env:GRAPHVIZ_DIR = "C:\Users\rranjan4\Documents\Arch"
+pip install --config-settings="--global-option=build_ext" --config-settings="--global-option=-IC:\Program Files\Graphviz\include" --config-settings="--global-option=-LC:\Users\rranjan4\Documents\Arch\lib" pygraphviz
 
 # 3. Install remaining packages
 pip install diagrams graphviz graphviz2drawio
@@ -42,11 +42,11 @@ pip install diagrams graphviz graphviz2drawio
 ```
 
 ### GraphViz Installation
-- **Location**: `C:\Program Files\Graphviz\bin`
+- **Location**: `C:\Users\rranjan4\Documents\Arch\bin`
 - **Version**: 14.0.2
 - **Critical**: Must add to PATH before running diagram scripts
   ```powershell
-  $env:PATH += ";C:\Program Files\Graphviz\bin"
+  $env:PATH += ";C:\Users\rranjan4\Documents\Arch\bin"
   ```
 
 ### VS Code Extensions
@@ -105,9 +105,9 @@ External Repositories:
 
 #### Step 2: Run with GraphViz in PATH
 ```powershell
-cd "C:\Shelly\Youtube\Azure AI\Arch-diag\my_azure_diagrams"
+cd "C:\Users\rranjan4\Documents\Arch\my_azure_diagrams"
 .\venv\Scripts\Activate.ps1
-$env:PATH += ";C:\Program Files\Graphviz\bin"
+$env:PATH += ";C:\Users\rranjan4\Documents\Arch\bin"
 python <script_name>.py
 ```
 
